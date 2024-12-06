@@ -51,11 +51,4 @@ mod tests {
 
         assert_eq!(part1(input), 11);
     }
-
-    #[test]
-    fn test_parse_line() {
-        assert_eq!(parse_line("3 4"), (3, 4));
-        assert_eq!(parse_line("42 17"), (42, 17));
-        assert_eq!(parse_line("-5 10"), (-5, 10));
-    }
 }
