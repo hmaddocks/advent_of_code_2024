@@ -18,7 +18,19 @@ defmodule Part2 do
   end
 
   def part2(input) do
-    input |> parse_input()
+    {left_list, right_list} = input |> parse_input()
+
+    right_map = Enum.frequencies(right_list)
+
+    count =
+      Enum.reduce(left_list, 0, fn left, acc ->
+        case Map.get(right_map, left) do
+          nil -> acc
+          count -> acc + left * count
+        end
+      end)
+
+    count
   end
 end
 
