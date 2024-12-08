@@ -10,60 +10,51 @@ defmodule Part1 do
     {-1, -1}
   ]
 
-  def count_occurrences(grid, word) do
-    word_chars = String.graphemes(word)
-    word_len = length(word_chars)
-    rows = length(grid)
-    cols = length(Enum.at(grid, 0))
+  def find_word(grid, word) when is_list(grid) and is_binary(word) do
+    word
+    |> String.graphemes()
+    |> find_word_in_grid(grid)
+  end
 
-    for row <- 0..(rows - 1),
-        col <- 0..(cols - 1),
+  defp find_word_in_grid(word_chars, grid) do
+    dimensions = {length(grid), length(hd(grid))}
+
+    for row <- 0..(elem(dimensions, 0) - 1),
+        col <- 0..(elem(dimensions, 1) - 1),
         direction <- @directions,
+        match_at_position?(grid, {row, col}, direction, word_chars, dimensions),
         reduce: 0 do
-      count ->
-        if check_word(grid, {row, col}, direction, word_chars, word_len, rows, cols) do
-          count + 1
-        else
-          count
-        end
+      acc -> acc + 1
     end
   end
 
-  defp check_word(
-         grid,
-         {row, col},
-         {row_direction, col_direction},
-         word_chars,
-         word_len,
-         rows,
-         cols
-       ) do
-    Enum.reduce_while(0..(word_len - 1), true, fn i, _acc ->
-      nr = row + i * row_direction
-      nc = col + i * col_direction
-
-      cond do
-        nr < 0 or nr >= rows or nc < 0 or nc >= cols ->
-          {:halt, false}
-
-        Enum.at(Enum.at(grid, nr), nc) != Enum.at(word_chars, i) ->
-          {:halt, false}
-
-        true ->
-          {:cont, true}
-      end
+  defp match_at_position?(grid, {row, col}, {row_dir, col_dir}, chars, {rows, cols}) do
+    chars
+    |> Enum.with_index()
+    |> Enum.all?(fn {char, i} ->
+      pos = {row + i * row_dir, col + i * col_dir}
+      in_bounds?(pos, {rows, cols}) && at(grid, pos) == char
     end)
   end
 
-  def read_input(input) do
+  defp in_bounds?({row, col}, {rows, cols}) do
+    row >= 0 and row < rows and col >= 0 and col < cols
+  end
+
+  defp at(grid, {row, col}) do
+    grid |> Enum.at(row) |> Enum.at(col)
+  end
+
+  defp read_input(input) do
     input
     |> String.split("\n", trim: true)
     |> Enum.map(&String.graphemes/1)
   end
 
-  def part1(input) do
-    grid = read_input(input)
-    count_occurrences(grid, "XMAS")
+  def part1(input) when is_binary(input) do
+    input
+    |> read_input()
+    |> find_word("XMAS")
   end
 end
 
