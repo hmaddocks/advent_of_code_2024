@@ -39,7 +39,6 @@ impl Graph {
     }
 }
 
-#[inline]
 fn find_middle(sequence: &[i32]) -> i32 {
     sequence[sequence.len() / 2]
 }
