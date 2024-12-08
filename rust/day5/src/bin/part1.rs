@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 #[derive(Default)]
 struct Graph {
     edges: HashMap<i32, HashSet<i32>>,
@@ -10,10 +8,14 @@ struct Graph {
 
 impl Graph {
     fn new(rules: &[(i32, i32)]) -> Self {
-        let edges = rules.iter().fold(HashMap::new(), |mut graph, &(from, to)| {
-            graph.entry(from).or_insert_with(HashSet::new).insert(to);
-            graph
-        });
+        let edges = rules.iter().map(|&(from, to)| (from, to)).fold(
+            HashMap::new(),
+            |mut acc, (from, to)| {
+                acc.entry(from).or_insert_with(HashSet::new).insert(to);
+                acc
+            },
+        );
+
         Self {
             edges,
             positions_cache: HashMap::with_capacity(32),
@@ -22,12 +24,15 @@ impl Graph {
 
     fn is_valid_sequence(&mut self, sequence: &[i32]) -> bool {
         self.positions_cache.clear();
+        self.positions_cache.extend(
+            sequence
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(i, val)| (val, i)),
+        );
 
-        for (i, &val) in sequence.iter().enumerate() {
-            self.positions_cache.insert(val, i);
-        }
-
-        sequence.iter().all(|&page| {
+        sequence.iter().copied().all(|page| {
             self.edges.get(&page).map_or(true, |deps| {
                 deps.iter().all(|&dep| {
                     self.positions_cache
@@ -43,64 +48,52 @@ fn find_middle(sequence: &[i32]) -> i32 {
     sequence[sequence.len() / 2]
 }
 
-fn parse_input(input: &str) -> Result<(Vec<(i32, i32)>, Vec<Vec<i32>>)> {
-    let mut parts = input.split("\n\n");
+fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
+    let (rules_section, updates_section) = input
+        .split_once("\n\n")
+        .expect("Invalid input format: missing section separator");
 
-    // Parse rules section
-    let rules_section = parts.next().ok_or("Missing rules section")?;
-    let mut rules = Vec::with_capacity(rules_section.lines().count());
+    let rules = rules_section
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let (from, to) = line
+                .split_once('|')
+                .expect("Invalid rule format: missing separator");
+            (
+                from.trim().parse().expect("Invalid number"),
+                to.trim().parse().expect("Invalid number"),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    for line in rules_section.lines() {
-        if line.is_empty() {
-            continue;
-        }
+    let updates = updates_section
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            line.split(',')
+                .map(|num| num.trim().parse::<i32>().expect("Invalid number"))
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
 
-        let mut iter = line.split('|');
-        let from = iter
-            .next()
-            .ok_or("Missing 'from' value")?
-            .trim()
-            .parse::<i32>()?;
-        let to = iter
-            .next()
-            .ok_or("Missing 'to' value")?
-            .trim()
-            .parse::<i32>()?;
-        rules.push((from, to));
-    }
-
-    let updates_section = parts.next().ok_or("Missing updates section")?;
-    let mut updates = Vec::with_capacity(updates_section.lines().count());
-
-    for line in updates_section.lines() {
-        if line.is_empty() {
-            continue;
-        }
-
-        let mut numbers = Vec::with_capacity(8);
-        for num_str in line.split(',') {
-            numbers.push(num_str.trim().parse::<i32>()?);
-        }
-        updates.push(numbers);
-    }
-
-    Ok((rules, updates))
+    (rules, updates)
 }
 
-fn part1(input: &str) -> Result<i32> {
-    let (rules, updates) = parse_input(input)?;
+fn part1(input: &str) -> i32 {
+    let (rules, updates) = parse_input(input);
     let mut graph = Graph::new(&rules);
 
-    Ok(updates
+    updates
         .iter()
         .filter(|update| graph.is_valid_sequence(update))
-        .map(|update| find_middle(update))
-        .sum())
+        .map(|update| find_middle(update.as_slice()))
+        .sum()
 }
 
 fn main() {
     let input = include_str!("../../input.txt");
-    dbg!(part1(input).unwrap());
+    dbg!(part1(input));
 }
 
 #[cfg(test)]
@@ -139,6 +132,6 @@ mod tests {
 97,13,75,29,47
 ";
 
-        assert_eq!(part1(input).unwrap(), 143);
+        assert_eq!(part1(input), 143);
     }
 }
