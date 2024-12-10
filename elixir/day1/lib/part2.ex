@@ -22,15 +22,12 @@ defmodule Part2 do
 
     right_map = Enum.frequencies(right_list)
 
-    count =
-      Enum.reduce(left_list, 0, fn left, acc ->
-        case Map.get(right_map, left) do
-          nil -> acc
-          count -> acc + left * count
-        end
-      end)
-
-    count
+    Enum.reduce(left_list, 0, fn left, acc ->
+      case Map.get(right_map, left) do
+        nil -> acc
+        count -> acc + left * count
+      end
+    end)
   end
 end
 
