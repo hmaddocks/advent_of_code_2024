@@ -1,0 +1,9 @@
+require:
+  - rubocop-performance
+  - rubocop-rspec
+
+AllCops:
+    NewCops: enable
+
+Metrics/CyclomaticComplexity:
+  Max: 15
