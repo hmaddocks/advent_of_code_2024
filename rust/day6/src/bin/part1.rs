@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,9 +29,28 @@ impl Direction {
     }
 }
 
-fn simulate_movement(grid: &[Vec<char>], start_pos: (i32, i32), start_dir: Direction) -> usize {
+fn simulate_movement(
+    grid: &[Vec<char>],
+    start_pos: (i32, i32),
+    start_dir: Direction,
+) -> Result<usize> {
+    if grid.is_empty() {
+        anyhow::bail!("Grid cannot be empty");
+    }
+
     let rows = grid.len() as i32;
     let cols = grid[0].len() as i32;
+
+    if start_pos.0 < 0 || start_pos.0 >= rows || start_pos.1 < 0 || start_pos.1 >= cols {
+        anyhow::bail!(
+            "Invalid start position ({}, {}): must be within grid bounds (0..{}, 0..{})",
+            start_pos.0,
+            start_pos.1,
+            rows,
+            cols
+        );
+    }
+
     let mut pos = start_pos;
     let mut dir = start_dir;
     let mut visited = HashSet::new();
@@ -54,11 +74,24 @@ fn simulate_movement(grid: &[Vec<char>], start_pos: (i32, i32), start_dir: Direc
         }
     }
 
-    visited.len()
+    Ok(visited.len())
 }
 
-fn parse_input(input: &str) -> (Vec<Vec<char>>, (i32, i32), Direction) {
+fn parse_input(input: &str) -> Result<(Vec<Vec<char>>, (i32, i32), Direction)> {
+    if input.is_empty() {
+        anyhow::bail!("Input cannot be empty");
+    }
+
     let grid: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
+
+    if grid.is_empty() {
+        anyhow::bail!("Grid cannot be empty");
+    }
+
+    let width = grid[0].len();
+    if !grid.iter().all(|row| row.len() == width) {
+        anyhow::bail!("Grid rows must have equal length");
+    }
 
     // Find starting position using iterator methods
     let (start_pos, _) = grid
@@ -70,19 +103,20 @@ fn parse_input(input: &str) -> (Vec<Vec<char>>, (i32, i32), Direction) {
                 .find(|(_, &ch)| ch == '^')
                 .map(|(j, _)| ((i as i32, j as i32), Direction::Up))
         })
-        .expect("No starting position found");
+        .context("No starting position (^) found in grid")?;
 
-    (grid, start_pos, Direction::Up)
+    Ok((grid, start_pos, Direction::Up))
 }
 
-fn part1(input: &str) -> usize {
-    let (grid, start_pos, start_dir) = parse_input(input);
+fn part1(input: &str) -> Result<usize> {
+    let (grid, start_pos, start_dir) = parse_input(input)?;
     simulate_movement(&grid, start_pos, start_dir)
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    dbg!(part1(input));
+    dbg!(part1(input)?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -102,6 +136,6 @@ mod tests {
 #.........
 ......#...";
 
-        assert_eq!(part1(input), 41);
+        assert_eq!(part1(input).unwrap(), 41);
     }
 }

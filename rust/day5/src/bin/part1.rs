@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -44,56 +45,82 @@ impl Graph {
     }
 }
 
-fn find_middle(sequence: &[i32]) -> i32 {
-    sequence[sequence.len() / 2]
+fn find_middle(sequence: &[i32]) -> Result<i32> {
+    if sequence.is_empty() {
+        anyhow::bail!("Cannot find middle of empty sequence");
+    }
+    Ok(sequence[sequence.len() / 2])
 }
 
-fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
+fn parse_input(input: &str) -> Result<(Vec<(i32, i32)>, Vec<Vec<i32>>)> {
     let (rules_section, updates_section) = input
         .split_once("\n\n")
-        .expect("Invalid input format: missing section separator");
+        .context("Invalid input format: missing section separator")?;
 
     let rules = rules_section
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| {
-            let (from, to) = line
-                .split_once('|')
-                .expect("Invalid rule format: missing separator");
-            (
-                from.trim().parse().expect("Invalid number"),
-                to.trim().parse().expect("Invalid number"),
-            )
+        .enumerate()
+        .map(|(line_num, line)| {
+            let (from, to) = line.split_once('|').with_context(|| {
+                format!(
+                    "Invalid rule format at line {}: missing separator",
+                    line_num + 1
+                )
+            })?;
+
+            let from = from.trim().parse().with_context(|| {
+                format!("Invalid number '{}' at line {}", from.trim(), line_num + 1)
+            })?;
+            let to = to.trim().parse().with_context(|| {
+                format!("Invalid number '{}' at line {}", to.trim(), line_num + 1)
+            })?;
+
+            Ok((from, to))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>()?;
 
     let updates = updates_section
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| {
+        .enumerate()
+        .map(|(line_num, line)| {
             line.split(',')
-                .map(|num| num.trim().parse::<i32>().expect("Invalid number"))
-                .collect::<Vec<_>>()
+                .enumerate()
+                .map(|(num_idx, num)| {
+                    num.trim().parse::<i32>().with_context(|| {
+                        format!(
+                            "Invalid number '{}' at position {} in update line {}",
+                            num.trim(),
+                            num_idx + 1,
+                            line_num + 1
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>>>()
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>()?;
 
-    (rules, updates)
+    Ok((rules, updates))
 }
 
-fn part1(input: &str) -> i32 {
-    let (rules, updates) = parse_input(input);
+fn part1(input: &str) -> Result<i32> {
+    let (rules, updates) = parse_input(input)?;
     let mut graph = Graph::new(&rules);
 
-    updates
+    Ok(updates
         .iter()
         .filter(|update| graph.is_valid_sequence(update))
         .map(|update| find_middle(update.as_slice()))
-        .sum()
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .sum())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    dbg!(part1(input));
+    dbg!(part1(input)?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -131,7 +158,6 @@ mod tests {
 61,13,29
 97,13,75,29,47
 ";
-
-        assert_eq!(part1(input), 143);
+        assert_eq!(part1(input).unwrap(), 143);
     }
 }

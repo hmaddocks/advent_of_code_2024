@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -62,41 +63,75 @@ fn sort_sequence_by_rules(sequence: &[i32], graph: &Graph) -> Vec<i32> {
     sorted
 }
 
-fn find_middle(sequence: &[i32]) -> i32 {
-    sequence[sequence.len() / 2]
+fn find_middle(sequence: &[i32]) -> Result<i32> {
+    if sequence.is_empty() {
+        anyhow::bail!("Cannot find middle of empty sequence");
+    }
+    Ok(sequence[sequence.len() / 2])
 }
 
-fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
-    let (rules_section, updates_section) =
-        input.split_once("\n\n").expect("Missing section separator");
+fn parse_input(input: &str) -> Result<(Vec<(i32, i32)>, Vec<Vec<i32>>)> {
+    let (rules_section, updates_section) = input
+        .split_once("\n\n")
+        .context("Invalid input format: missing section separator")?;
 
     let rules = rules_section
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| {
-            let (from, to) = line.split_once('|').expect("Invalid rule format");
-            (
-                from.trim().parse().expect("Invalid 'from' number"),
-                to.trim().parse().expect("Invalid 'to' number"),
-            )
+        .enumerate()
+        .map(|(line_num, line)| {
+            let (from, to) = line.split_once('|').with_context(|| {
+                format!(
+                    "Invalid rule format at line {}: missing separator",
+                    line_num + 1
+                )
+            })?;
+
+            let from = from.trim().parse().with_context(|| {
+                format!(
+                    "Invalid 'from' number '{}' at line {}",
+                    from.trim(),
+                    line_num + 1
+                )
+            })?;
+            let to = to.trim().parse().with_context(|| {
+                format!(
+                    "Invalid 'to' number '{}' at line {}",
+                    to.trim(),
+                    line_num + 1
+                )
+            })?;
+
+            Ok((from, to))
         })
-        .collect();
+        .collect::<Result<Vec<_>>>()?;
 
     let updates = updates_section
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| {
+        .enumerate()
+        .map(|(line_num, line)| {
             line.split(',')
-                .map(|num| num.trim().parse().expect("Invalid number in sequence"))
-                .collect()
+                .enumerate()
+                .map(|(num_idx, num)| {
+                    num.trim().parse::<i32>().with_context(|| {
+                        format!(
+                            "Invalid number '{}' at position {} in update line {}",
+                            num.trim(),
+                            num_idx + 1,
+                            line_num + 1
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>>>()
         })
-        .collect();
+        .collect::<Result<Vec<_>>>()?;
 
-    (rules, updates)
+    Ok((rules, updates))
 }
 
-fn part2(input: &str) -> i32 {
-    let (rules, updates) = parse_input(input);
+fn part2(input: &str) -> Result<i32> {
+    let (rules, updates) = parse_input(input)?;
     let mut graph = Graph::new(&rules);
 
     let invalid_updates: Vec<_> = updates
@@ -104,18 +139,18 @@ fn part2(input: &str) -> i32 {
         .filter(|update| !graph.is_valid_sequence(update))
         .collect();
 
-    invalid_updates
-        .iter()
-        .map(|update| {
-            let sorted = sort_sequence_by_rules(update, &graph);
-            find_middle(&sorted)
-        })
-        .sum()
+    let mut sum = 0;
+    for update in invalid_updates {
+        let sorted = sort_sequence_by_rules(update, &graph);
+        sum += find_middle(&sorted)?;
+    }
+    Ok(sum)
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    dbg!(part2(input));
+    dbg!(part2(input)?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -154,6 +189,6 @@ mod tests {
 97,13,75,29,47
 ";
 
-        assert_eq!(part2(input), 123);
+        assert_eq!(part2(input).unwrap(), 123);
     }
 }

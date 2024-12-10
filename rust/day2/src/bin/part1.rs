@@ -1,12 +1,25 @@
-fn parse_input(input: &str) -> Vec<Vec<i32>> {
+use anyhow::{Context, Result};
+
+fn parse_input(input: &str) -> Result<Vec<Vec<i32>>> {
     input
         .lines()
-        .map(|line| {
+        .enumerate()
+        .map(|(line_num, line)| {
             line.split_whitespace()
-                .map(|num| num.parse().expect("Failed to parse number"))
-                .collect()
+                .enumerate()
+                .map(|(num_idx, num)| {
+                    num.parse().with_context(|| {
+                        format!(
+                            "Failed to parse number '{}' at position {} on line {}",
+                            num,
+                            num_idx + 1,
+                            line_num + 1
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>>>()
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()
 }
 
 fn count_safe_reports(reports: &[Vec<i32>]) -> usize {
@@ -27,16 +40,16 @@ fn is_safe(levels: &[i32]) -> bool {
     diffs.iter().all(|&d| d > 0) || diffs.iter().all(|&d| d < 0)
 }
 
-fn part1(input: &str) -> usize {
-    let reports = parse_input(input);
-    count_safe_reports(&reports)
+fn part1(input: &str) -> Result<usize> {
+    let reports = parse_input(input)?;
+    Ok(count_safe_reports(&reports))
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    dbg!(part1(input));
+    dbg!(part1(input)?);
+    Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,7 +64,7 @@ mod tests {
     1 3 6 7 9
     ";
 
-        assert_eq!(part1(input), 2);
+        assert_eq!(part1(input).unwrap(), 2);
     }
 
     #[test]

@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -40,10 +41,24 @@ struct GridState {
 }
 
 impl GridState {
-    fn from_input(input: &str) -> Self {
+    fn from_input(input: &str) -> Result<Self> {
+        if input.is_empty() {
+            anyhow::bail!("Input cannot be empty");
+        }
+
         let grid: Grid = input.lines().map(|line| line.chars().collect()).collect();
+
+        if grid.is_empty() {
+            anyhow::bail!("Grid cannot be empty");
+        }
+
         let rows = grid.len() as i32;
         let cols = grid[0].len() as i32;
+
+        // Check for uneven rows
+        if !grid.iter().all(|row| row.len() == grid[0].len()) {
+            anyhow::bail!("All grid rows must have the same length");
+        }
 
         // Find starting position using iterator methods
         let (start_pos, _) = grid
@@ -55,15 +70,15 @@ impl GridState {
                     .find(|(_, &ch)| ch == '^')
                     .map(|(j, _)| ((i as i32, j as i32), Direction::Up))
             })
-            .expect("No starting position found");
+            .context("No starting position (^) found in grid")?;
 
-        Self {
+        Ok(Self {
             grid,
             rows,
             cols,
             start_pos,
             start_dir: Direction::Up,
-        }
+        })
     }
 
     fn is_valid_pos(&self, pos: Position) -> bool {
@@ -112,7 +127,7 @@ fn has_loop(state: &GridState, visited: &mut HashSet<(Position, Direction)>) -> 
     }
 }
 
-fn find_all_loops(state: &mut GridState) -> usize {
+fn find_all_loops(state: &mut GridState) -> Result<usize> {
     let mut total_loops = 0;
     let mut visited = HashSet::with_capacity((state.rows * state.cols * 4) as usize);
 
@@ -134,17 +149,18 @@ fn find_all_loops(state: &mut GridState) -> usize {
         }
     }
 
-    total_loops
+    Ok(total_loops)
 }
 
-fn part2(input: &str) -> usize {
-    let mut state = GridState::from_input(input);
+fn part2(input: &str) -> Result<usize> {
+    let mut state = GridState::from_input(input)?;
     find_all_loops(&mut state)
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    dbg!(part2(input));
+    dbg!(part2(input)?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -164,6 +180,6 @@ mod tests {
 #.........
 ......#...";
 
-        assert_eq!(part2(input), 6);
+        assert_eq!(part2(input).unwrap(), 6);
     }
 }

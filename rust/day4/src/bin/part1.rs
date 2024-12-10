@@ -1,55 +1,56 @@
-fn count_occurrences(grid: &Vec<Vec<char>>, word: &str) -> usize {
-    let directions = [
-        (0, 1),   // Right
-        (1, 0),   // Down
-        (0, -1),  // Left
-        (-1, 0),  // Up
-        (1, 1),   // Down-Right
-        (1, -1),  // Down-Left
-        (-1, 1),  // Up-Right
-        (-1, -1), // Up-Left
-    ];
+const DIRECTIONS: [(i32, i32); 8] = [
+    (0, 1),   // Right
+    (1, 0),   // Down
+    (0, -1),  // Left
+    (-1, 0),  // Up
+    (1, 1),   // Down-Right
+    (1, -1),  // Down-Left
+    (-1, 1),  // Up-Right
+    (-1, -1), // Up-Left
+];
 
-    let mut count = 0;
-    let word_len = word.len() as isize;
-    let rows = grid.len() as isize;
-    let cols = grid[0].len() as isize;
-    let word_chars: Vec<char> = word.chars().collect();
+struct Grid {
+    cells: Vec<Vec<char>>,
+    rows: usize,
+    cols: usize,
+}
 
-    for row in 0..rows {
-        for col in 0..cols {
-            for &(row_direction, col_direction) in &directions {
-                let mut matched = true;
-                for i in 0..word_len {
-                    let nr = row + i * row_direction;
-                    let nc = col + i * col_direction;
-                    if nr < 0
-                        || nr >= rows
-                        || nc < 0
-                        || nc >= cols
-                        || grid[nr as usize][nc as usize] != word_chars[i as usize]
-                    {
-                        matched = false;
-                        break;
-                    }
-                }
-                if matched {
-                    count += 1;
-                }
-            }
-        }
+impl Grid {
+    fn new(input: &str) -> Self {
+        let cells: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
+        let rows = cells.len();
+        let cols = cells.first().map_or(0, |row| row.len());
+        Self { cells, rows, cols }
     }
 
-    count
+    fn get(&self, row: i32, col: i32) -> Option<char> {
+        if row >= 0 && (row as usize) < self.rows && col >= 0 && (col as usize) < self.cols {
+            Some(self.cells[row as usize][col as usize])
+        } else {
+            None
+        }
+    }
 }
 
-fn read_input(input: &str) -> Vec<Vec<char>> {
-    input.lines().map(|line| line.chars().collect()).collect()
+fn word_at_position(row: i32, col: i32, direction: (i32, i32), word: &str, grid: &Grid) -> bool {
+    word.chars().enumerate().all(|(i, expected)| {
+        let new_row = row + (i as i32 * direction.0);
+        let new_col = col + (i as i32 * direction.1);
+        grid.get(new_row, new_col).map_or(false, |c| c == expected)
+    })
 }
 
-fn part1(input: &str) -> usize {
-    let grid = read_input(input);
-    count_occurrences(&grid, "XMAS")
+fn count_xmas(grid: &Grid, word: &str) -> i32 {
+    (0..grid.rows as i32)
+        .flat_map(|row| (0..grid.cols as i32).map(move |col| (row, col)))
+        .flat_map(|(row, col)| DIRECTIONS.iter().map(move |&dir| (row, col, dir)))
+        .filter(|&(row, col, dir)| word_at_position(row, col, dir, word, grid))
+        .count() as i32
+}
+
+fn part1(input: &str) -> i32 {
+    let grid = Grid::new(input);
+    count_xmas(&grid, "XMAS")
 }
 
 fn main() {
