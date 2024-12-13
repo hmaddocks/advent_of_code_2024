@@ -10,8 +10,13 @@ struct Node {
 }
 
 impl Node {
-    fn new(result: i64, value: i64, left: Option<Box<Node>>, right: Option<Box<Node>>) -> Self {
-        Node {
+    const fn new(
+        result: i64,
+        value: i64,
+        left: Option<Box<Node>>,
+        right: Option<Box<Node>>,
+    ) -> Self {
+        Self {
             result,
             value,
             left,
@@ -19,40 +24,34 @@ impl Node {
         }
     }
 
-    fn is_leaf(&self) -> bool {
+    const fn is_leaf(&self) -> bool {
         self.left.is_none() && self.right.is_none()
     }
 
     fn can_reach_result(&self, current: i64) -> bool {
-        if self.is_leaf() {
+        if self.is_leaf() || current == self.result {
             return current == self.result;
         }
-        if current == self.result {
-            return true;
-        }
+
+        let check_child = |child: &Node, current: i64| {
+            child.can_reach_result(current + child.value)
+                || child.can_reach_result(current * child.value)
+        };
 
         match (&self.left, &self.right) {
-            (Some(left), Some(right)) => {
-                left.can_reach_result(current + left.value)
-                    || left.can_reach_result(current * left.value)
-                    || right.can_reach_result(current + right.value)
-                    || right.can_reach_result(current * right.value)
-            }
-            (Some(child), None) | (None, Some(child)) => {
-                child.can_reach_result(current + child.value)
-                    || child.can_reach_result(current * child.value)
-            }
+            (Some(left), Some(right)) => check_child(left, current) || check_child(right, current),
+            (Some(child), None) | (None, Some(child)) => check_child(child, current),
             (None, None) => false,
         }
     }
 
-    fn build_tree(result: i64, numbers: &[i64]) -> Option<Box<Node>> {
+    fn build_tree(result: i64, numbers: &[i64]) -> Option<Box<Self>> {
         match numbers {
             [] => None,
-            [single] => Some(Box::new(Node::new(result, *single, None, None))),
+            [single] => Some(Box::new(Self::new(result, *single, None, None))),
             [first, rest @ ..] => {
                 let subtree = Self::build_tree(result, rest);
-                Some(Box::new(Node::new(
+                Some(Box::new(Self::new(
                     result,
                     *first,
                     subtree.clone(),
@@ -67,18 +66,18 @@ fn parse_input(input: &str) -> Result<Vec<(i64, Vec<i64>)>> {
     input
         .lines()
         .map(|line| {
-            let mut parts = line.trim().split(": ");
-            let result = parts
-                .next()
-                .context("Missing result")?
-                .parse()
-                .context("Invalid result")?;
-            let numbers = parts
-                .next()
-                .context("Missing numbers")?
+            let (result, numbers) = line
+                .trim()
+                .split_once(": ")
+                .context("Invalid line format")?;
+
+            let result = result.parse().context("Invalid result")?;
+            let numbers = numbers
                 .split_whitespace()
-                .map(|n| n.parse().context("Invalid number"))
-                .collect::<Result<_>>()?;
+                .map(str::parse)
+                .collect::<std::result::Result<_, _>>()
+                .context("Invalid numbers")?;
+
             Ok((result, numbers))
         })
         .collect()
