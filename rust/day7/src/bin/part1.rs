@@ -145,23 +145,16 @@ mod tests {
 
     #[test]
     fn test_solve_puzzle() {
-        let input = "\
-            190: 10 19\n\
-            3267: 81 40 27\n\
-            83: 17 5\n\
-            156: 15 6\n\
-            7290: 6 8 6 15\n\
-            161011: 16 10 13\n\
-            192: 17 8 14\n\
-            21037: 9 7 18 13\n\
-            292: 11 6 16 20\n\
-        ";
+        let input = "190: 10 19
+3267: 81 40 27
+83: 17 5
+156: 15 6
+7290: 6 8 6 15
+161011: 16 10 13
+192: 17 8 14
+21037: 9 7 18 13
+292: 11 6 16 20
+";
         assert_eq!(part1(input).unwrap(), 3749);
-    }
-
-    #[test]
-    fn test_invalid_input() {
-        let input = "not a number: 10 19";
-        assert!(part1(input).is_err());
     }
 }

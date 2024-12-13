@@ -2,7 +2,7 @@ defmodule Part1 do
   def parse_line(line) do
     line
     |> String.split(~r/\s+/, trim: true)
-    |> then(fn [left_str, right_str] ->
+    |> Enum.map(fn [left_str, right_str] ->
       {String.to_integer(left_str), String.to_integer(right_str)}
     end)
   end
