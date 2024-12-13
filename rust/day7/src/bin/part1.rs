@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use rayon::prelude::*;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 struct Node {
