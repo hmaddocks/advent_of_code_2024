@@ -1,61 +1,71 @@
 # frozen_string_literal: true
 
-class Node
-  attr_reader :value, :left, :right, :result
+class Node # rubocop:disable Style/Documentation
+  attr_reader :target, :value, :left, :right
 
-  def initialize(result:, value:, left:, right:)
-    @result = result
+  def initialize(target:, value:, left: nil, right: nil)
+    @target = target
     @value = value
     @left = left
     @right = right
   end
 
-  def evaluate(current_value = @value)
-    return current_value == @result if @left.nil? && @right.nil?
+  def evaluate(current = value)
+    return current == target if leaf?
+    return true if current == target
 
-    return true if current_value == @result
+    # Short circuit only if we're definitely too high
+    return false if current > target
 
-    [@left, @right].compact.each do |child|
-      # Try addition
-      return true if child.evaluate(current_value + child.value)
-      # Try multiplication
-      return true if child.evaluate(current_value * child.value)
+    children.any? do |child|
+      child.evaluate(current + child.value) ||
+        child.evaluate(current * child.value)
     end
-
-    false
   end
 
-  def self.build_tree(result, numbers)
+  def self.build_tree(target, numbers)
     return nil if numbers.empty?
-    return Node.new(result: result, value: numbers.first, left: nil, right: nil) if numbers.size == 1
+    return new(target: target, value: numbers.first) if numbers.size == 1
 
-    first = numbers.first
-    rest = numbers[1..]
-
-    Node.new(
-      result: result,
+    first, *rest = numbers
+    new(
+      target: target,
       value: first,
-      left: build_tree(result, rest),
-      right: build_tree(result, rest)
+      left: build_tree(target, rest),
+      right: build_tree(target, rest)
     )
   end
+
+  private
+
+  def leaf?
+    left.nil? && right.nil?
+  end
+
+  def children
+    [left, right].compact
+  end
+end
+
+def evaluate_line(target, numbers)
+  # Short circuit if sum would exceed target or product would be too small
+  return 0 if numbers.sum > target
+  return 0 if numbers.reduce(1, :*) < target
+
+  tree = Node.build_tree(target, numbers)
+  tree.evaluate ? target : 0
 end
 
 def parse_input(input)
-  input.lines.map do |line|
-    result, numbers = line.strip.split(': ')
-    [result.to_i, numbers.split.map(&:to_i)]
+  input.each_line.map do |line|
+    target, numbers = line.strip.split(': ')
+    [target.to_i, numbers.split.map(&:to_i)]
   end
-end
-
-def evaluate_line(result, numbers)
-  tree = Node.build_tree(result, numbers)
-  tree.evaluate ? result : 0
 end
 
 def part1(input)
   lines = parse_input(input)
-  lines.sum { |result, numbers| evaluate_line(result, numbers) }
+  lines.sum { |target, numbers| evaluate_line(target, numbers) }
 end
 
 if __FILE__ == $PROGRAM_NAME
