@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     result: i64,
     value: i64,
@@ -22,17 +23,6 @@ impl Node {
         self.left.is_none() && self.right.is_none()
     }
 
-    fn children(&self) -> Vec<&Node> {
-        let mut children = Vec::new();
-        if let Some(left) = &self.left {
-            children.push(left.as_ref());
-        }
-        if let Some(right) = &self.right {
-            children.push(right.as_ref());
-        }
-        children
-    }
-
     fn can_reach_result(&self, current: i64) -> bool {
         if self.is_leaf() {
             return current == self.result;
@@ -41,66 +31,77 @@ impl Node {
             return true;
         }
 
-        self.children().iter().any(|child| {
-            child.can_reach_result(current + child.value)
-                || child.can_reach_result(current * child.value)
-        })
+        match (&self.left, &self.right) {
+            (Some(left), Some(right)) => {
+                left.can_reach_result(current + left.value)
+                    || left.can_reach_result(current * left.value)
+                    || right.can_reach_result(current + right.value)
+                    || right.can_reach_result(current * right.value)
+            }
+            (Some(child), None) | (None, Some(child)) => {
+                child.can_reach_result(current + child.value)
+                    || child.can_reach_result(current * child.value)
+            }
+            (None, None) => false,
+        }
     }
 
     fn build_tree(result: i64, numbers: &[i64]) -> Option<Box<Node>> {
-        if numbers.is_empty() {
-            return None;
+        match numbers {
+            [] => None,
+            [single] => Some(Box::new(Node::new(result, *single, None, None))),
+            [first, rest @ ..] => {
+                let subtree = Self::build_tree(result, rest);
+                Some(Box::new(Node::new(
+                    result,
+                    *first,
+                    subtree.clone(),
+                    subtree,
+                )))
+            }
         }
-        if numbers.len() == 1 {
-            return Some(Box::new(Node::new(result, numbers[0], None, None)));
-        }
-
-        let (first, rest) = numbers.split_first().unwrap();
-        Some(Box::new(Node::new(
-            result,
-            *first,
-            Self::build_tree(result, rest),
-            Self::build_tree(result, rest),
-        )))
     }
 }
 
-fn parse_input(input: &str) -> Vec<(i64, Vec<i64>)> {
+fn parse_input(input: &str) -> Result<Vec<(i64, Vec<i64>)>> {
     input
         .lines()
         .map(|line| {
             let mut parts = line.trim().split(": ");
-            let result = parts.next().unwrap().parse::<i64>().unwrap();
+            let result = parts
+                .next()
+                .context("Missing result")?
+                .parse()
+                .context("Invalid result")?;
             let numbers = parts
                 .next()
-                .unwrap()
+                .context("Missing numbers")?
                 .split_whitespace()
-                .map(|n| n.parse::<i64>().unwrap())
-                .collect();
-            (result, numbers)
+                .map(|n| n.parse().context("Invalid number"))
+                .collect::<Result<_>>()?;
+            Ok((result, numbers))
         })
         .collect()
 }
 
 fn evaluate_line(result: i64, numbers: &[i64]) -> i64 {
-    if let Some(tree) = Node::build_tree(result, numbers) {
-        if tree.can_reach_result(tree.value) {
-            return result;
-        }
-    }
-    0
+    Node::build_tree(result, numbers)
+        .filter(|tree| tree.can_reach_result(tree.value))
+        .map_or(0, |_| result)
 }
 
-fn part1(input: &str) -> i64 {
-    parse_input(input)
-        .iter()
+fn part1(input: &str) -> Result<i64> {
+    let parsed = parse_input(input)?;
+    Ok(parsed
+        .par_iter()
         .map(|(result, numbers)| evaluate_line(*result, numbers))
-        .sum()
+        .sum())
 }
 
-fn main() {
+fn main() -> Result<()> {
     let input = include_str!("../../input.txt");
-    println!("Result: {}", part1(input));
+    println!("Result: {}", part1(input)?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -110,37 +111,37 @@ mod tests {
     #[test]
     fn test_two_numbers_ok() {
         let input = "190: 10 19";
-        assert_eq!(part1(input), 190);
+        assert_eq!(part1(input).unwrap(), 190);
     }
 
     #[test]
     fn test_two_numbers_not_ok() {
         let input = "83: 17 5";
-        assert_eq!(part1(input), 0);
+        assert_eq!(part1(input).unwrap(), 0);
     }
 
     #[test]
     fn test_three_numbers_ok() {
         let input = "3267: 81 40 27";
-        assert_eq!(part1(input), 3267);
+        assert_eq!(part1(input).unwrap(), 3267);
     }
 
     #[test]
     fn test_three_numbers_not_ok() {
         let input = "161011: 16 10 13";
-        assert_eq!(part1(input), 0);
+        assert_eq!(part1(input).unwrap(), 0);
     }
 
     #[test]
     fn test_four_numbers_ok() {
         let input = "292: 11 6 16 20";
-        assert_eq!(part1(input), 292);
+        assert_eq!(part1(input).unwrap(), 292);
     }
 
     #[test]
     fn test_four_numbers_not_ok() {
         let input = "7290: 6 8 6 15";
-        assert_eq!(part1(input), 0);
+        assert_eq!(part1(input).unwrap(), 0);
     }
 
     #[test]
@@ -156,12 +157,12 @@ mod tests {
             21037: 9 7 18 13\n\
             292: 11 6 16 20\n\
         ";
-        assert_eq!(part1(input), 3749);
+        assert_eq!(part1(input).unwrap(), 3749);
     }
 
     #[test]
     fn test_invalid_input() {
         let input = "not a number: 10 19";
-        // assert!(part1(input).is_err()); // This test will fail because error handling is removed
+        assert!(part1(input).is_err());
     }
 }
