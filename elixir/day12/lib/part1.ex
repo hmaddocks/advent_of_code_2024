@@ -21,9 +21,9 @@ defmodule Part1 do
     flood_fill_impl(grid, visited, [{start_i, start_j}], %Region{}, ch, dims)
   end
 
-  defp flood_fill_impl(grid, visited, [], region, _ch, _dims), do: {region, visited}
+  defp flood_fill_impl(_, visited, [], region, _ch, _dims), do: {region, visited}
 
-  defp flood_fill_impl(grid, visited, [{i, j} = point | rest], region, ch, dims = {rows, cols}) do
+  defp flood_fill_impl(grid, visited, [{i, j} = point | rest], region, ch, dims = {_, _}) do
     cond do
       MapSet.member?(visited, point) or get_in(grid, [Access.at(i), Access.at(j)]) != ch ->
         flood_fill_impl(grid, visited, rest, region, ch, dims)
