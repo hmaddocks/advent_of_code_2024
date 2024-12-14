@@ -23,7 +23,7 @@ defmodule Part1 do
 
   defp flood_fill_impl(_, visited, [], region, _ch, _dims), do: {region, visited}
 
-  defp flood_fill_impl(grid, visited, [{i, j} = point | rest], region, ch, dims = {_, _}) do
+  defp flood_fill_impl(grid, visited, [{i, j} = point | rest], region, ch, dims) do
     cond do
       MapSet.member?(visited, point) or get_in(grid, [Access.at(i), Access.at(j)]) != ch ->
         flood_fill_impl(grid, visited, rest, region, ch, dims)
@@ -54,24 +54,27 @@ defmodule Part1 do
     %{region | area: region.area + 1, perimeter: region.perimeter + boundary_edges}
   end
 
-  defp process_neighbors(grid, visited, {i, j}, ch, {rows, cols}, stack) do
+  defp process_neighbors(grid, visited, {i, j}, ch, dims, stack) do
     @directions
     |> Enum.reduce({stack, 0}, fn {di, dj}, {acc_stack, perim} ->
-      ni = i + di
-      nj = j + dj
+      neighbor = {i + di, j + dj}
 
-      if valid_position?({ni, nj}, {rows, cols}) do
-        neighbor_ch = get_in(grid, [Access.at(ni), Access.at(nj)])
+      case {valid_position?(neighbor, dims), get_neighbor(grid, neighbor),
+            MapSet.member?(visited, neighbor)} do
+        {true, ^ch, false} ->
+          {[neighbor | acc_stack], perim}
 
-        cond do
-          neighbor_ch != ch -> {acc_stack, perim + 1}
-          not MapSet.member?(visited, {ni, nj}) -> {[{ni, nj} | acc_stack], perim}
-          true -> {acc_stack, perim}
-        end
-      else
-        {acc_stack, perim}
+        {true, other_ch, _} when other_ch != ch ->
+          {acc_stack, perim + 1}
+
+        _ ->
+          {acc_stack, perim}
       end
     end)
+  end
+
+  defp get_neighbor(grid, {i, j}) do
+    get_in(grid, [Access.at(i), Access.at(j)])
   end
 
   defp valid_position?({i, j}, {rows, cols}) do
