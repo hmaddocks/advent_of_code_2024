@@ -3,30 +3,34 @@ fn parse_input(input: &str) -> Vec<Vec<char>> {
         .trim()
         .lines()
         .map(|line| line.trim().chars().collect())
-        .filter(|line: &Vec<char>| !line.is_empty())
         .collect()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Region {
     area: usize,
     perimeter: usize,
 }
 
+impl Region {
+    fn score(&self) -> usize {
+        self.area * self.perimeter
+    }
+}
+
+const DIRECTIONS: [(isize, isize); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+
 fn flood_fill(
     grid: &[Vec<char>],
     visited: &mut Vec<Vec<bool>>,
-    i: usize,
-    j: usize,
+    start_i: usize,
+    start_j: usize,
     ch: char,
 ) -> Region {
-    let mut region = Region {
-        area: 0,
-        perimeter: 0,
-    };
-    let rows = grid.len();
-    let cols = grid[0].len();
-    let mut stack = vec![(i, j)];
+    let mut region = Region::default();
+    let rows = grid.len() as isize;
+    let cols = grid[0].len() as isize;
+    let mut stack = vec![(start_i, start_j)];
 
     while let Some((i, j)) = stack.pop() {
         if visited[i][j] || grid[i][j] != ch {
@@ -37,45 +41,26 @@ fn flood_fill(
         region.area += 1;
 
         // Count boundary edges
-        if i == 0 {
-            region.perimeter += 1;
-        }
-        if i == rows - 1 {
-            region.perimeter += 1;
-        }
-        if j == 0 {
-            region.perimeter += 1;
-        }
-        if j == cols - 1 {
-            region.perimeter += 1;
-        }
+        region.perimeter += (i == 0) as usize
+            + (i == grid.len() - 1) as usize
+            + (j == 0) as usize
+            + (j == grid[0].len() - 1) as usize;
 
-        // Count edges with different characters
-        if i > 0 && grid[i - 1][j] != ch {
-            region.perimeter += 1;
-        }
-        if i < rows - 1 && grid[i + 1][j] != ch {
-            region.perimeter += 1;
-        }
-        if j > 0 && grid[i][j - 1] != ch {
-            region.perimeter += 1;
-        }
-        if j < cols - 1 && grid[i][j + 1] != ch {
-            region.perimeter += 1;
-        }
+        // Check all adjacent cells
+        let i = i as isize;
+        let j = j as isize;
+        for (di, dj) in DIRECTIONS {
+            let ni = i + di;
+            let nj = j + dj;
 
-        // Add adjacent cells of same character to stack
-        if i > 0 && !visited[i - 1][j] && grid[i - 1][j] == ch {
-            stack.push((i - 1, j));
-        }
-        if i < rows - 1 && !visited[i + 1][j] && grid[i + 1][j] == ch {
-            stack.push((i + 1, j));
-        }
-        if j > 0 && !visited[i][j - 1] && grid[i][j - 1] == ch {
-            stack.push((i, j - 1));
-        }
-        if j < cols - 1 && !visited[i][j + 1] && grid[i][j + 1] == ch {
-            stack.push((i, j + 1));
+            if ni >= 0 && ni < rows && nj >= 0 && nj < cols {
+                let (ni, nj) = (ni as usize, nj as usize);
+                if grid[ni][nj] != ch {
+                    region.perimeter += 1;
+                } else if !visited[ni][nj] {
+                    stack.push((ni, nj));
+                }
+            }
         }
     }
 
@@ -91,8 +76,7 @@ fn find_regions(grid: &[Vec<char>]) -> Vec<Region> {
     for i in 0..rows {
         for j in 0..cols {
             if !visited[i][j] {
-                let region = flood_fill(grid, &mut visited, i, j, grid[i][j]);
-                regions.push(region);
+                regions.push(flood_fill(grid, &mut visited, i, j, grid[i][j]));
             }
         }
     }
@@ -102,8 +86,7 @@ fn find_regions(grid: &[Vec<char>]) -> Vec<Region> {
 
 fn part1(input: &str) -> usize {
     let grid = parse_input(input);
-    let regions = find_regions(&grid);
-    regions.iter().map(|r| r.area * r.perimeter).sum()
+    find_regions(&grid).iter().map(Region::score).sum()
 }
 
 fn main() {
