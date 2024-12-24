@@ -37,10 +37,58 @@ func parseInput(input string) [][]int {
 	return reports
 }
 
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func ascending(nums []int) bool {
+	ascending := true
+	for i := 1; i < len(nums); i++ {
+		if nums[i] <= nums[i-1] {
+			ascending = false
+			break
+		}
+	}
+
+	return ascending
+}
+
+func descending(nums []int) bool {
+	descending := true
+	for i := 1; i < len(nums); i++ {
+		if nums[i] >= nums[i-1] {
+			descending = false
+			break
+		}
+	}
+
+	return descending
+}
+
+func safe(report []int) bool {
+	if len(report) < 2 {
+		return false
+	}
+
+	for i := 0; i < len(report)-1; i++ {
+		first := report[i]
+		second := report[i+1]
+		if abs(first-second) < 1 || abs(first-second) > 3 {
+			return false
+		}
+
+	}
+
+	return ascending(report) || descending(report)
+}
+
 func count_safe_reports(reports [][]int) int {
-	var safe_reports int = 0
+	var safe_reports = 0
 	for _, report := range reports {
-		if len(report) >= 2 {
+		if safe(report) {
 			safe_reports++
 		}
 	}
@@ -50,8 +98,7 @@ func count_safe_reports(reports [][]int) int {
 
 func part1(input string) (int, error) {
 	reports := parseInput(input)
-	count_safe_reports(reports)
-	return 0, nil
+	return count_safe_reports(reports), nil
 }
 
 // go build -o bin/part1 ./part1/main.go
