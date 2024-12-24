@@ -9,17 +9,13 @@ import (
 )
 
 func parseLine(line string) []int {
-	strNums := strings.Fields(line)
-	nums := make([]int, 0, len(strNums))
-
-	for _, strNum := range strNums {
+	nums := make([]int, 0, len(strings.Fields(line)))
+	for _, strNum := range strings.Fields(line) {
 		num, err := strconv.Atoi(strNum)
-		if err != nil {
-			continue
+		if err == nil {
+			nums = append(nums, num)
 		}
-		nums = append(nums, num)
 	}
-
 	return nums
 }
 
@@ -28,8 +24,7 @@ func parseInput(input string) [][]int {
 	reports := make([][]int, 0, len(lines))
 
 	for _, line := range lines {
-		lineNums := parseLine(line)
-		if len(lineNums) > 0 {
+		if lineNums := parseLine(line); len(lineNums) > 0 {
 			reports = append(reports, lineNums)
 		}
 	}
@@ -44,61 +39,52 @@ func abs(x int) int {
 	return x
 }
 
-func ascending(nums []int) bool {
-	ascending := true
-	for i := 1; i < len(nums); i++ {
-		if nums[i] <= nums[i-1] {
-			ascending = false
-			break
-		}
+func isStrictMonotonic(nums []int) bool {
+	if len(nums) < 2 {
+		return false
 	}
 
-	return ascending
-}
-
-func descending(nums []int) bool {
-	descending := true
+	ascending := nums[0] < nums[1]
 	for i := 1; i < len(nums); i++ {
-		if nums[i] >= nums[i-1] {
-			descending = false
-			break
+		if ascending && nums[i] <= nums[i-1] {
+			return false
+		}
+		if !ascending && nums[i] >= nums[i-1] {
+			return false
 		}
 	}
-
-	return descending
+	return true
 }
 
-func safe(report []int) bool {
+func isSafe(report []int) bool {
 	if len(report) < 2 {
 		return false
 	}
 
 	for i := 0; i < len(report)-1; i++ {
-		first := report[i]
-		second := report[i+1]
+		first, second := report[i], report[i+1]
 		if abs(first-second) < 1 || abs(first-second) > 3 {
 			return false
 		}
-
 	}
 
-	return ascending(report) || descending(report)
+	return isStrictMonotonic(report)
 }
 
-func count_safe_reports(reports [][]int) int {
-	var safe_reports = 0
+func countSafeReports(reports [][]int) int {
+	safeReports := 0
 	for _, report := range reports {
-		if safe(report) {
-			safe_reports++
+		if isSafe(report) {
+			safeReports++
 		}
 	}
 
-	return safe_reports
+	return safeReports
 }
 
 func part1(input string) (int, error) {
 	reports := parseInput(input)
-	return count_safe_reports(reports), nil
+	return countSafeReports(reports), nil
 }
 
 // go build -o bin/part1 ./part1/main.go
@@ -108,9 +94,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to read input file: %v", err)
 	}
-	input := string(inputBytes)
 
-	result, err := part1(input)
+	result, err := part1(string(inputBytes))
 	if err != nil {
 		log.Fatalf("Error processing input: %v", err)
 	}

@@ -125,7 +125,7 @@ func TestSafe(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := safe(tc.report)
+			result := isStrictMonotonic(tc.report)
 
 			if result != tc.expected {
 				t.Errorf("Expected %v, got %v for report %v", tc.expected, result, tc.report)
@@ -159,7 +159,7 @@ func TestCountSafeReports(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := count_safe_reports(tc.reports)
+			result := countSafeReports(tc.reports)
 
 			if result != tc.expected {
 				t.Errorf("Expected %d safe reports, got %d", tc.expected, result)
