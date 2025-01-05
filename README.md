@@ -1,1 +1,4 @@
-Advent of Code 2024. Elixir and Rust to begin with. Might add Ruby later. Or might not do anything if previous years are any guide :/
+Advent of Code 2024. 
+
+Solving with Ruby or Rust and then trying Elixir and Go as a way to learn the the languages.
+
